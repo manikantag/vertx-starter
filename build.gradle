@@ -1,0 +1,63 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '7.0.0'
+}
+
+group = 'com.globalpayex'
+version = '1.0.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+def vertxVersion = '4.1.1'
+def junitJupiterVersion = '5.7.0'
+
+def mainVerticleName = 'com.globalpayex.schememanager.MainVerticle'
+def launcherClassName = 'io.vertx.core.Launcher'
+
+def watchForChange = 'src/**/*'
+def doOnChange = '${projectDir}/gradlew classes'
+
+application {
+    mainClass = launcherClassName
+}
+
+dependencies {
+    implementation platform("io.vertx:vertx-stack-depchain:$vertxVersion")
+    implementation 'io.vertx:vertx-web'
+    implementation 'io.vertx:vertx-mongo-client'
+    testImplementation 'io.vertx:vertx-junit5'
+    testImplementation "org.junit.jupiter:junit-jupiter:$junitJupiterVersion"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+shadowJar {
+    archiveClassifier.set('fat')
+    manifest {
+        attributes 'Main-Verticle': mainVerticleName
+    }
+    mergeServiceFiles()
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events = [TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED]
+    }
+}
+
+//javaexec {
+//task runApp(type: JavaExec) {
+tasks.withType(JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = launcherClassName
+    args = ['run', mainVerticleName, "--redeploy=$watchForChange", "--launcher-class=$launcherClassName", "--on-redeploy=$doOnChange"]
+}
